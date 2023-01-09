@@ -266,5 +266,5 @@ Arc::Arc(int capacity,int cost)
 
 void Arc::print() /* affiche les détails d'un arc, mais n'affiche pas le sommet sortant et le sommet entrant */
 {
-  std::cout << "(flow:" << flow << ", cap:" << capacity << ", rescap:" << residualCapacity << ", cost:" << cost << ", pairId:" << pairId << ") " << endl;
+  std::cout << "(flow:" << flow << ", cap:" << capacity << ", rescap:" << residualCapacity << ", cost:" << cost << ", pairId:" << pairId << ") ";
 }
