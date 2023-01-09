@@ -1,5 +1,6 @@
 #include <unordered_set>
 #include <limits.h>
+#include <chrono>
 #include "graph.cpp"
 
 
@@ -11,14 +12,47 @@ vector<vector<int>>  dijkstra(Graph & graph,int start,vector<int> potentials);  
 int findClosestTempVertex(vector<int> distances,unordered_set<int> temporarilyTagged); /* fonction pour dijkstra, trouve le sommet avec une étiquette temporaire le plus proche du départ */
 int findMaxFlowAlongPath(Graph & graph,int start,int end,vector<int> predecessors,vector<int> potentials);
 void increaseAlongPath(Graph & graph,int start,int end,vector<int> predecessors,int increase);
+void runTests(); /* teste le PCCS sur toutes les instances et affiche les resultats */
+
 
 
 int main(int nbArgs,char **values)
 {
-  Graph test("instances/example.dat");
-  pccs(test);
-  cout << cost_sol(test) << endl;
-  //for(int i=0;i<test.nbVertices;++i){std::cout << i << " dist "<< results[1][i]<< " pred " << results[0][i]<<'\n';}
+  runTests();
+  return 0;
+}
+
+
+
+void runTests()
+{
+  vector<string> filenames = {
+  "instances/example.dat","instances/example_small_1.dat","instances/example_small_2.dat",
+  "instances/example_medium_1.dat","instances/example_medium_2.dat","instances/example_medium_3.dat","instances/example_medium_4.dat",
+  "instances/example_large_1.dat","instances/example_large_2.dat"};
+
+  chrono::steady_clock::time_point startTime;
+  chrono::steady_clock::time_point endTime;
+
+  for(string filename:filenames) /* boucle pour parcourir les fichiers */
+  {
+    cout << filename << endl;
+    Graph graph(filename);
+
+    startTime = chrono::steady_clock::now();
+    pccs(graph);
+    endTime = chrono::steady_clock::now();
+
+    int minCost = cost_sol(graph);
+    cout << "Cost: " << minCost << endl;
+
+    cout << "Solution found in " << std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count() << " ms\n";
+
+    if(checkGraph(graph)){cout << "Valid solution" << endl;}
+    else{cout << "Invalid Solution" << endl;}
+
+    cout << endl;
+  }
 }
 
 
@@ -96,7 +130,7 @@ vector<vector<int>>  dijkstra(Graph & graph,int start,vector<int> potentials)
 
 
 
-int findClosestTempVertex(std::vector<int> distances,std::unordered_set<int> temporarilyTagged)
+int findClosestTempVertex(vector<int> distances,unordered_set<int> temporarilyTagged)
 {
   int mininmum = INT_MAX;
   int closestVertex = -1;
@@ -168,27 +202,34 @@ int findMaxFlowAlongPath(Graph & graph,int start,int end,vector<int> predecessor
 
 
 bool checkGraph(Graph & graph){
-  int flot_entrant = 0;
-  int flot_sortant = 0;
+  vector<int> transitingFlows(graph.nbVertices,0);
 
-  for (int i =0; i< graph.nbVertices; ++i) {        // parcours du vecteur des noeuds départs
-    for(auto &[k, v] :graph.vertices[i]) {          // parcours de la map des noeuds destinations et des arcs associés
-      for (int i=0; i< v.size(); ++i){       // parcours du vecteur des arcs destinations (si il y a plusieurs éléments dans ce vecteur c'est que le graphe est un multigraphe)
-        if ( v[i].capacity<=v[i].flow){       // le flot des arcs doit être  inférieur à leur capacité (2ème contraintes)
+  for(int vertex=0; vertex< graph.nbVertices; ++vertex)
+  {
+    for(auto &[neighbor,edges]:graph.vertices[vertex])
+    {
+      for(int subEdgeIndex=0;subEdgeIndex<edges.size();++subEdgeIndex)
+      {
+        Arc edge = edges[subEdgeIndex];
+        if(edge.flow > edge.capacity) /* contrainte de capacité */
+        {
+          cout << "Overflow on arc (" << vertex << "," << neighbor << ")[" << subEdgeIndex << "]\n";
+          edge.print();
           return false;
         }
-
-        flot_sortant = flot_sortant + v[i].capacity;    // flot sortant du noeud i
-        for (auto &[l, w] :graph.vertices[k]){                // parcours des arcs symétriques au noeud sortant de i,  i.e. les noeuds entrants en i (pour que cela marche il faut que le graphe soit symmétrique )
-          for (int j=0; j< w.size(); ++j){              // parcours du vecteur des arcs de ces noeuds
-            flot_entrant = flot_entrant + w[j].flow;
-          }
-        }
+        transitingFlows[neighbor] += edge.flow;
+        transitingFlows[vertex] -= edge.flow;
       }
     }
-  if( flot_entrant != flot_sortant){
-    return false;
   }
+  for(int vertex=0; vertex< graph.nbVertices; ++vertex)
+  {
+    if(transitingFlows[vertex] + graph.productions[vertex] != 0) /* contrainte d'équilibre */
+    {
+      cout << "Imbalance on vertex " << vertex << endl;
+      cout << "Transiting " << transitingFlows[vertex]  << ", produced " << graph.productions[vertex] << endl;
+      return false;
+    }
   }
   return true;
 }
@@ -206,36 +247,3 @@ int cost_sol(Graph & graph){
   }
   return cost_tot;
 }
-
-
-
-// Graph pccs(Graph & graph, vector<int> consommation){
-//   vector<int> potentiel (graph.nbVertices,0);
-//   symmetrisation(graph);
-//   while (consommation[source])!=0){                             // tant qu'on a du flot à envoyer b(s) je sais pas comment on l'obtient
-//     vector<int> distance = dijkstra(s,graph);   // On calucle la distance entre s et chaque noeud
-
-
-//     //mise à jour des potentiels
-//     for (int i=0; i< distance.size(); ++i){
-//       potentiel[i] = potentiel[i] - distance[i];
-//     }
-
-
-//     //calcul de la valeur du flow
-
-//     int delta = b(s);
-//     if (b(p)<delta)){
-//       delta = b(p);
-//     }
-//     for (int i =0; i< graph.nbVertices; ++i) {        // parcours du vecteur des noeuds départs
-//       for(auto &[k, v] :graph.vertices[i]) {          // parcours de la map des noeuds destinations et des arcs associés
-//         for (int i=0; i< v.size(); ++i){
-//           if(v[i].residualCapacity<delta){
-//             delta = v[i].residualCapacity<delta
-//           }
-//         }
-//       }
-//     }
-//   }
-// }
