@@ -6,7 +6,7 @@
 
 
 bool checkGraph(Graph & graph);  /* retourne un booléen qui indique si les flots sont valides et affiche le cout */
-int cost_sol(Graph & graph);   //retourne le cout de la solution retournée
+int cost_sol(Graph & graph);   /* retourne le coût de la solution retournée */
 void pccs(Graph & graph);       /* affècte un flot de cout minimal avec l'algorithme de plus courts chemins augmentants */
 vector<vector<int>>  dijkstra(Graph & graph,int start,vector<int> potentials);  /* retourne les vecteur des distances et des prédécésseurs des plus courts chemins depuis start */
 int findClosestTempVertex(vector<int> distances,unordered_set<int> temporarilyTagged); /* fonction pour dijkstra, trouve le sommet avec une étiquette temporaire le plus proche du départ */
@@ -131,7 +131,7 @@ vector<vector<int>>  dijkstra(Graph & graph,int start,vector<int> potentials)
 
 
 int findClosestTempVertex(vector<int> distances,unordered_set<int> temporarilyTagged)
-{
+{ /* fonction pour dijkstra, trouve le sommet avec une étiquette temporaire le plus proche du départ */
   int mininmum = INT_MAX;
   int closestVertex = -1;
   for(int vertex:temporarilyTagged)
