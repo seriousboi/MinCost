@@ -6,21 +6,52 @@
 
 bool checkGraph(Graph & graph);  /* retourne un booléen qui indique si les flots sont valides et affiche le cout */
 int cost_sol(Graph & graph);   //retourne le cout de la solution retournée
-Graph pccs(Graph & graph);       // retourne un graphe avec un graphe de cout min
+void pccs(Graph & graph);       /* affècte un flot de cout minimal avec l'algorithme de plus courts chemins augmentants */
 vector<vector<int>>  dijkstra(Graph & graph,int start,vector<int> potentials);  /* retourne les vecteur des distances et des prédécésseurs des plus courts chemins depuis start */
 int findClosestTempVertex(vector<int> distances,unordered_set<int> temporarilyTagged); /* fonction pour dijkstra, trouve le sommet avec une étiquette temporaire le plus proche du départ */
-
+int findMaxFlowAlongPath(Graph & graph,int start,int end,vector<int> predecessors,vector<int> potentials);
+void increaseAlongPath(Graph & graph,int start,int end,vector<int> predecessors,int increase);
 
 
 int main(int nbArgs,char **values)
 {
   Graph test("instances/example.dat");
-  test.addSuperSourceSink();
-  test.symmetrisation();
-  test.print();
-  vector<int> potentials(test.nbVertices,0);
-  vector<vector<int>> results = dijkstra(test,test.nbVertices-2,potentials);
-  for(int i=0;i<test.nbVertices;++i){std::cout << i << " dist "<< results[1][i]<< " pred " << results[0][i]<<'\n';}
+  pccs(test);
+  cout << cost_sol(test) << endl;
+  //for(int i=0;i<test.nbVertices;++i){std::cout << i << " dist "<< results[1][i]<< " pred " << results[0][i]<<'\n';}
+}
+
+
+
+void pccs(Graph & graph)
+{
+  graph.addSuperSourceSink(); /* ajout d'une super source et d'un super puit */
+  graph.symmetrisation(); /* on symmétrise pour avoir les arcs inverse */
+
+  vector<int> potentials(graph.nbVertices,0); /* on initialise les différentes variables pour l'algorithme */
+  int excess = graph.productions[graph.sourceIndex]; /* on ne regarde que un excès durant l'algorithme grace à la super source */
+
+  while(excess > 0)
+  {
+    vector<vector<int>> results = dijkstra(graph,graph.sourceIndex,potentials); /* on fait toujours dijkstra depuis la supersource */
+    vector<int> predecessors = results[0];
+    vector<int> distances = results[1];
+
+    if(predecessors[graph.sinkIndex] == -1) /* on vérifie qu'un chemin existe entre source et sink */
+    {
+      cout << "Unfeasable" << endl; /* si non, alors le problème n'est pas réalisable */
+      return;
+    }
+
+    int flowIncrease = min(excess,findMaxFlowAlongPath(graph,graph.sourceIndex,graph.sinkIndex,predecessors,potentials));
+    increaseAlongPath(graph,graph.sourceIndex,graph.sinkIndex,predecessors,flowIncrease);
+    excess -= flowIncrease;
+
+    for(int index=0;index<graph.nbVertices;++index)
+    {
+      potentials[index] -= distances[index]; /* mise à jour des potentiels */
+    }
+  }
 }
 
 
@@ -78,6 +109,60 @@ int findClosestTempVertex(std::vector<int> distances,std::unordered_set<int> tem
     }
   }
   return closestVertex;
+}
+
+
+
+void increaseAlongPath(Graph & graph,int start,int end,vector<int> predecessors,int increase)
+{
+  int currentVertex = end;
+  int nextVertex = predecessors[end];
+
+  while(currentVertex != start)
+  {
+    graph.increaseFlow(increase,nextVertex,currentVertex);
+    currentVertex = nextVertex;
+    nextVertex = predecessors[currentVertex];
+  }
+}
+
+
+
+int findMaxFlowAlongPath(Graph & graph,int start,int end,vector<int> predecessors,vector<int> potentials)
+{
+  int minimum = INT_MAX;
+  int currentVertex = end;
+  int nextVertex = predecessors[end];
+
+  while(currentVertex != start)
+  {
+
+    /* ce truc est super moche, il vaudrait mieux que dijkstra garde en mémoire le sous indice des arcs du chemin */
+    int minEdgeCost = INT_MAX; /* on cherche le sous indice d'un arc de capacité résiduelle strictement positive et de coût minimal parmis les arcs entre les deux sommet du chemin */
+    int subEdgeIndex = -1;
+    for(int subArcIndex=0;subArcIndex<graph.vertices[nextVertex][currentVertex].size();subArcIndex++)
+    {
+      Arc arc = graph.vertices[nextVertex][currentVertex][subArcIndex];
+      if(arc.residualCapacity > 0)
+      {
+        int cost = arc.cost - potentials[nextVertex] + potentials[currentVertex];
+        if(cost < minEdgeCost)
+        {
+          minEdgeCost = cost;
+          subEdgeIndex = subArcIndex;
+        }
+      }
+    }
+
+    if(graph.vertices[nextVertex].at(currentVertex)[subEdgeIndex].residualCapacity < minimum)
+    {
+      minimum = graph.vertices[nextVertex].at(currentVertex)[subEdgeIndex].residualCapacity;
+    }
+
+    currentVertex = nextVertex;
+    nextVertex = predecessors[currentVertex];
+  }
+  return minimum;
 }
 
 
