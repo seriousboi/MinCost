@@ -9,14 +9,14 @@ using namespace std;
 class Arc
 {
   public:
-    float flow;
-    float cost;
-    float capacity;
-    float residualCapacity;
+    int flow;
+    int cost;
+    int capacity;
+    int residualCapacity;
 
     int pairId; /* indice de l'arc inverse parmis le vecteur d'arcs qui vont dans l'autre sens */
 
-    Arc(float capacity,float cost);
+    Arc(int capacity,int cost);
     void print();
 };
 
@@ -36,15 +36,15 @@ class Graph
     Graph(string filename);
     void addSuperSourceSink();
     void symmetrisation();
-    void addArc(int start,int end,float capacity,float cost);
-    void increaseFlow(float increase,int start,int end);
+    void addArc(int start,int end,int capacity,int cost);
+    void increaseFlow(int increase,int start,int end);
     bool isFlowPassing(int start,int end);
     void print();
 };
 
 
 
-void Graph::increaseFlow(float increase,int start,int end)
+void Graph::increaseFlow(int increase,int start,int end)
 {
   if(increase == 0){return;} /* pour éviter les boucles infinies */
 
@@ -68,7 +68,7 @@ void Graph::increaseFlow(float increase,int start,int end)
     {
       if(arc.flow > 0) /* /!\ on fait la supposition qu'il existe un unique arc avec flow > 0 entre end et start*/
       {
-        float flowReversed = min(arc.flow,increase);
+        int flowReversed = min(arc.flow,increase);
         increaseFlow(-flowReversed,end,start);
         increaseFlow(increase-flowReversed,start,end);
         return;
@@ -93,7 +93,7 @@ bool Graph::isFlowPassing(int start,int end) /* vérifie si du flot passe entre 
 
 
 
-void Graph::addArc(int start,int end,float capacity,float cost) /* ajoute l'arc du sommet start vers le sommet end */
+void Graph::addArc(int start,int end,int capacity,int cost) /* ajoute l'arc du sommet start vers le sommet end */
 {
   if(not(start<nbVertices and end<nbVertices and start>=0 and end>=0))
   {
@@ -130,7 +130,7 @@ void Graph::addSuperSourceSink()
     else if (productions[i]<0)
     {                // on récupère les noeuds consommateurs
       consomme = consomme + productions[i];
-      addArc(i,sinkIndex,productions[i],0);  // création des arcs des 'vrai' noeud vers le 'super' noeud consommateur
+      addArc(i,sinkIndex,-productions[i],0);  // création des arcs des 'vrai' noeud vers le 'super' noeud consommateur
       productions[i] = 0;
     }
   }
@@ -203,7 +203,7 @@ Graph::Graph(string filename)
       startIndex--;
       endIndex--;
       dataStream >> lineIdentifier; /* on saute mincap */
-      float capacity,cost;
+      int capacity,cost;
       dataStream >> capacity;
       dataStream >> cost;
       addArc(startIndex,endIndex,capacity,cost);
@@ -253,7 +253,7 @@ void Graph::print() /* affiche les listes d'adjacences sous forme <sommet i: (vo
 
 
 
-Arc::Arc(float capacity,float cost)
+Arc::Arc(int capacity,int cost)
 {
   this->capacity = capacity;
   this->cost = cost;

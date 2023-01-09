@@ -1,26 +1,90 @@
+#include <unordered_set>
+#include <limits.h>
 #include "graph.cpp"
 
 
 
 bool checkGraph(Graph & graph);  /* retourne un booléen qui indique si les flots sont valides et affiche le cout */
-float cost_sol(Graph & graph);   //retourne le cout de la solution retournée
+int cost_sol(Graph & graph);   //retourne le cout de la solution retournée
 Graph pccs(Graph & graph);       // retourne un graphe avec un graphe de cout min
+vector<vector<int>>  dijkstra(Graph & graph,int start,vector<int> potentials);  /* retourne les vecteur des distances et des prédécésseurs des plus courts chemins depuis start */
+int findClosestTempVertex(vector<int> distances,unordered_set<int> temporarilyTagged); /* fonction pour dijkstra, trouve le sommet avec une étiquette temporaire le plus proche du départ */
 
 
 
 int main(int nbArgs,char **values)
 {
   Graph test("instances/example.dat");
-  test.print();
   test.addSuperSourceSink();
+  test.symmetrisation();
   test.print();
+  vector<int> potentials(test.nbVertices,0);
+  vector<vector<int>> results = dijkstra(test,test.nbVertices-2,potentials);
+  for(int i=0;i<test.nbVertices;++i){std::cout << i << " dist "<< results[1][i]<< " pred " << results[0][i]<<'\n';}
+}
+
+
+
+vector<vector<int>>  dijkstra(Graph & graph,int start,vector<int> potentials)
+{ /* dijkstra naif adapté pour faire un parcour dans le graphe résiduel */
+  vector<vector<int>> results(2); /* initialisation des vecteurs de retour */
+  vector<int> & predecessors = results[0];
+  vector<int> & distances = results[1];
+  predecessors.resize(graph.nbVertices,-1);
+  distances.resize(graph.nbVertices,INT_MAX);
+
+  distances[start] = 0; /* on initialise les variables de l'algorithme */
+  predecessors[start] = start;
+  unordered_set<int> temporarilyTagged;
+  for(int vertex=0;vertex<graph.nbVertices;++vertex){temporarilyTagged.insert(vertex);}
+
+  int currentVertex;
+  while(not temporarilyTagged.empty())
+  {
+    currentVertex = findClosestTempVertex(distances,temporarilyTagged);
+    temporarilyTagged.erase(currentVertex);
+
+    for(auto & [neighbor,arcs] : graph.vertices[currentVertex])
+    {
+      for(Arc arc:arcs)
+      {
+        if(arc.residualCapacity > 0) /* on fait dijkstra sur les arc du graphe résiduel qui ont des capacités positives */
+        {
+          int cost = arc.cost - potentials[currentVertex] + potentials[neighbor]; /* on se sert des coûts réduits */
+          if(distances[neighbor] > distances[currentVertex] + cost)
+          {
+            distances[neighbor] = distances[currentVertex] + cost;
+            predecessors[neighbor] = currentVertex;
+          }
+        }
+      }
+    }
+  }
+  return results;
+}
+
+
+
+int findClosestTempVertex(std::vector<int> distances,std::unordered_set<int> temporarilyTagged)
+{
+  int mininmum = INT_MAX;
+  int closestVertex = -1;
+  for(int vertex:temporarilyTagged)
+  {
+    if(distances[vertex] <= mininmum)
+    {
+      closestVertex = vertex;
+      mininmum = distances[vertex];
+    }
+  }
+  return closestVertex;
 }
 
 
 
 bool checkGraph(Graph & graph){
-  float flot_entrant = 0;
-  float flot_sortant = 0;
+  int flot_entrant = 0;
+  int flot_sortant = 0;
 
   for (int i =0; i< graph.nbVertices; ++i) {        // parcours du vecteur des noeuds départs
     for(auto &[k, v] :graph.vertices[i]) {          // parcours de la map des noeuds destinations et des arcs associés
@@ -46,8 +110,8 @@ bool checkGraph(Graph & graph){
 
 
 
-float cost_sol(Graph & graph){
-  float cost_tot = 0;
+int cost_sol(Graph & graph){
+  int cost_tot = 0;
   for (int i =0; i< graph.nbVertices; ++i) {        // parcours du vecteur des noeuds départs
     for(auto &[k, v] :graph.vertices[i]) {          // parcours de la map des noeuds destinations et des arcs associés
       for (int i=0; i< v.size(); ++i){
@@ -75,7 +139,7 @@ float cost_sol(Graph & graph){
 
 //     //calcul de la valeur du flow
 
-//     float delta = b(s);
+//     int delta = b(s);
 //     if (b(p)<delta)){
 //       delta = b(p);
 //     }
