@@ -23,6 +23,7 @@ class Graph
 {
   public:
     int nbVertices;
+    vector<int> productions;
     vector<unordered_map<int,vector<Arc>>> vertices;
 
     Graph(int nbVertices);
@@ -39,6 +40,54 @@ Arc::Arc(float capacity,float cost)
   this->cost = cost;
   flow = 0;
   residualCapacity = capacity;
+}
+
+
+
+Graph::Graph(string filename)
+{
+  std::ifstream dataStream(filename);
+  if(!dataStream)
+  {
+    std::cout << "oof, cannot open file " << filename << std::endl;
+    return;
+  }
+  string lineIdentifier;
+  dataStream >> lineIdentifier;
+  while(not dataStream.eof())
+  {
+    if(lineIdentifier=="p")
+    {
+      dataStream >> lineIdentifier; /* on saute le "min" */
+      dataStream >> nbVertices;
+      vertices = vector<unordered_map<int,vector<Arc>>>(nbVertices);
+      productions = vector<int>(nbVertices);
+      int nbEdges;
+      dataStream >> lineIdentifier; /* on saute le nombre d'arcs */
+    }
+    else if(lineIdentifier=="n")
+    {
+      int vertexIndex;
+      dataStream >> vertexIndex;
+      vertexIndex--; /* l'indexage commence à 1 dans les fichiers */
+      dataStream >> productions[vertexIndex];
+    }
+    else if(lineIdentifier=="a")
+    {
+      int startIndex,endIndex;
+      dataStream >> startIndex;
+      dataStream >> endIndex;
+      startIndex--;
+      endIndex--;
+      dataStream >> lineIdentifier; /* on saute mincap */
+      float capacity,cost;
+      dataStream >> capacity;
+      dataStream >> cost;
+      addArc(startIndex,endIndex,capacity,cost);
+    }
+    dataStream >> lineIdentifier;
+    cout<<lineIdentifier<<endl;
+  }
 }
 
 
